@@ -1,4 +1,3 @@
-/* nuklear - v1.05 - public domain */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -21,8 +20,6 @@
 #define NK_IMPLEMENTATION
 #include "Nuklear/nuklear.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "Nuklear/example/stb_image.h"
 
 /* macros */
 #define WINDOW_WIDTH 1200
@@ -32,9 +29,6 @@
 #define MAX_ELEMENT_MEMORY 128 * 1024
 
 #define UNUSED(a) (void)a
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
-#define MAX(a,b) ((a) < (b) ? (b) : (a))
-#define LEN(a) (sizeof(a)/sizeof(a)[0])
 
 #ifdef __APPLE__
   #define NK_SHADER_VERSION "#version 150\n"
@@ -47,25 +41,6 @@ struct media {
     struct nk_font *font_18;
     struct nk_font *font_20;
     struct nk_font *font_22;
-
-    struct nk_image unchecked;
-    struct nk_image checked;
-    struct nk_image rocket;
-    struct nk_image cloud;
-    struct nk_image pen;
-    struct nk_image play;
-    struct nk_image pause;
-    struct nk_image stop;
-    struct nk_image prev;
-    struct nk_image next;
-    struct nk_image tools;
-    struct nk_image dir;
-    struct nk_image copy;
-    struct nk_image convert;
-    struct nk_image del;
-    struct nk_image edit;
-    struct nk_image images[9];
-    struct nk_image menu[6];
 };
 
 /* ===============================================================
@@ -142,26 +117,6 @@ die(const char *fmt, ...)
     va_end(ap);
     fputs("\n", stderr);
     exit(EXIT_FAILURE);
-}
-
-static struct nk_image
-icon_load(const char *filename)
-{
-    int x,y,n;
-    GLuint tex;
-    unsigned char *data = stbi_load(filename, &x, &y, &n, 0);
-    if (!data) die("[SDL]: failed to load image: %s", filename);
-
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    stbi_image_free(data);
-    return nk_image_id((int)tex);
 }
 
 static void
@@ -428,47 +383,17 @@ int main(int argc, char *argv[])
     * e.g.: ctx->style.font.height = 20. */
     nk_font_atlas_init_default(&atlas);
     nk_font_atlas_begin(&atlas);
-    media.font_14 = nk_font_atlas_add_from_file(&atlas, "../../extra_font/Roboto-Regular.ttf", 14.0f, &cfg);
-    media.font_18 = nk_font_atlas_add_from_file(&atlas, "../../extra_font/Roboto-Regular.ttf", 18.0f, &cfg);
-    media.font_20 = nk_font_atlas_add_from_file(&atlas, "../../extra_font/Roboto-Regular.ttf", 20.0f, &cfg);
-    media.font_22 = nk_font_atlas_add_from_file(&atlas, "../../extra_font/Roboto-Regular.ttf", 22.0f, &cfg);
+    media.font_14 = nk_font_atlas_add_from_file(&atlas, "extra_font/Roboto-Regular.ttf", 14.0f, &cfg);
+    media.font_18 = nk_font_atlas_add_from_file(&atlas, "extra_font/Roboto-Regular.ttf", 18.0f, &cfg);
+    media.font_20 = nk_font_atlas_add_from_file(&atlas, "extra_font/Roboto-Regular.ttf", 20.0f, &cfg);
+    media.font_22 = nk_font_atlas_add_from_file(&atlas, "extra_font/Roboto-Regular.ttf", 22.0f, &cfg);
     image = nk_font_atlas_bake(&atlas, &w, &h, NK_FONT_ATLAS_RGBA32);
     device_upload_atlas(&device, image, w, h);
     nk_font_atlas_end(&atlas, nk_handle_id((int)device.font_tex), &device.null);}
     nk_init_default(&ctx, &media.font_14->handle);}
 
-    /* icons */
     glEnable(GL_TEXTURE_2D);
-    media.unchecked = icon_load("../icon/unchecked.png");
-    media.checked = icon_load("../icon/checked.png");
-    media.rocket = icon_load("../icon/rocket.png");
-    media.cloud = icon_load("../icon/cloud.png");
-    media.pen = icon_load("../icon/pen.png");
-    media.play = icon_load("../icon/play.png");
-    media.pause = icon_load("../icon/pause.png");
-    media.stop = icon_load("../icon/stop.png");
-    media.next =  icon_load("../icon/next.png");
-    media.prev =  icon_load("../icon/prev.png");
-    media.tools = icon_load("../icon/tools.png");
-    media.dir = icon_load("../icon/directory.png");
-    media.copy = icon_load("../icon/copy.png");
-    media.convert = icon_load("../icon/export.png");
-    media.del = icon_load("../icon/delete.png");
-    media.edit = icon_load("../icon/edit.png");
-    media.menu[0] = icon_load("../icon/home.png");
-    media.menu[1] = icon_load("../icon/phone.png");
-    media.menu[2] = icon_load("../icon/plane.png");
-    media.menu[3] = icon_load("../icon/wifi.png");
-    media.menu[4] = icon_load("../icon/settings.png");
-    media.menu[5] = icon_load("../icon/volume.png");
-
-    {int i;
-    for (i = 0; i < 9; ++i) {
-        char buffer[256];
-        sprintf(buffer, "../images/image%d.png", (i+1));
-        media.images[i] = icon_load(buffer);
-    }}
-
+   
     while (!glfwWindowShouldClose(win))
     {
         /* High DPI displays */
