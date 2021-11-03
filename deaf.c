@@ -410,7 +410,15 @@ int main(int argc, char *argv[])
         nk_input_end(&ctx);}
 
         /* GUI */
-        grid_demo(&ctx, &media);
+       /* grid_demo(&ctx, &media);*/
+
+       /* Main Window */ 
+       if(nk_begin(&ctx,"main",nk_rect(0, 0, WINDOW_WIDTH,WINDOW_HEIGHT),
+        NK_WINDOW_NO_SCROLLBAR)){
+            //Menu Bar
+
+        }
+        nk_end(&ctx);
 
         /* Draw */
         glViewport(0, 0, display_width, display_height);
