@@ -233,61 +233,6 @@ pub fn decode_header(filename: []const u8, file: fs.File) !WavFile {
     };
 }
 
-test "print WavSpec  works" {
-    const wav = WavSpec{
-        .channels = 1,
-        .bits_per_sample = 16,
-        .sample_rate = 44100,
-    };
-    
-    const wavEx = WavSpecEx{
-        .spec = wav,
-        .bytes_per_sample = 2,
-    };
-    
-    const wavfile = WavFile{
-        .file_name = "test.wav",
-        .file_size = 10,
-        .spec_ex = wavEx,
-    };
-
-    const wavSpecStr = try std.fmt.allocPrint(
-        testing.allocator,
-        "{s}",
-        .{wav},
-    );
-    
-    const wavSpecExStr = try std.fmt.allocPrint(
-        testing.allocator,
-        "{s}",
-        .{wavEx},
-    );
-    
-    const wavFileStr = try std.fmt.allocPrint(
-        testing.allocator,
-        "{s}",
-        .{wavfile},
-    );
-    
-    defer testing.allocator.free(wavSpecStr);
-    defer testing.allocator.free(wavSpecExStr);
-    defer testing.allocator.free(wavFileStr);
-    
-    const teststr = 
-       \\============test.wav==============
-       \\|    file size: 10               |
-       \\|    channels: 1                 |
-       \\|    sample rate: 44100          |
-       \\|    bits per sample: 16         |
-       \\|    bytes per sample: 2         |
-       \\
-    ;
-        
-    try testing.expect(std.mem.eql(u8, wavFileStr, 
-    teststr));    
-    
-}
-
 test "read header file" {
     const file = try fs.cwd().openFile("samples/sine.wav", .{
         .read = true,
@@ -337,4 +282,54 @@ test "decode struct" {
     ;    
     const str = try nowavey.printHeader();    
     try testing.expect(std.mem.eql(u8,str,teststr));
+}
+
+
+test "read pcm wave format" {
+    let mut wav_reader = WavReader::open("testsamples/pcmwaveformat-16bit-44100Hz-mono.wav")
+        .unwrap();
+
+    assert_eq!(wav_reader.spec().channels, 1);
+    assert_eq!(wav_reader.spec().sample_rate, 44100);
+    assert_eq!(wav_reader.spec().bits_per_sample, 16);
+    assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+
+    let samples: Vec<i16> = wav_reader.samples()
+        .map(|r| r.unwrap())
+        .collect();
+
+    // The test file has been prepared with these exact four samples.
+    assert_eq!(&samples[..], &[2, -3, 5, -7]);
+}
+
+test "read skips unknown chunks" {
+    
+}
+
+test "read 0 valid bits fallback" {
+    
+}
+
+test "length and size hints are incorrect" {
+    
+}
+
+test "Size hint is correct" {
+    
+}
+
+test "Samples == Samples" {
+    
+}
+
+test "read wave format ex pcm" {
+    
+}
+
+test "read wave format ex ieee float" {
+    
+}
+
+test "read wave stereo" {
+    
 }
