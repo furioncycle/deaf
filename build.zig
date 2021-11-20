@@ -17,6 +17,14 @@ pub fn build(b: *std.build.Builder) void {
     exe.setBuildMode(mode);
     deps.addAllTo(exe);
     exe.install();
+    
+    const debug = b.addExecutable("dbg","src/dbg.zig");
+    debug.setBuildMode(mode);
+    debug.setTarget(target);
+    const debug_install = b.addInstallArtifact(debug);
+    const debug_step = b.step("debug", "Build for debug");
+    debug_step.dependOn(&debug_install.step);
+    
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
