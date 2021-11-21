@@ -9,6 +9,11 @@ const FileType = enum {
     Unknown,
 };
 
+const SampleFormat = enum {
+    Int,
+    Float,
+};
+
 const Fmt = enum {
     Pcm,
     Microsoft_Adpcm,
@@ -39,7 +44,7 @@ const WavSpec = struct {
     channels: u16,
     bits_per_sample: u16,
     sample_rate: u32,
-
+    sample_format: SampleFormat,
     pub fn format(
         self: WavSpec,
         comptime fmt: []const u8,
@@ -52,6 +57,7 @@ const WavSpec = struct {
         try writer.print("|    channels: {d}                 |\n", .{self.channels});
         try writer.print("|    sample rate: {d}          |\n", .{self.sample_rate});
         try writer.print("|    bits per sample: {d}         |\n", .{self.bits_per_sample});
+        try writer.print("|    sample format: {s}\n", .{self.sample_format});
     }
 };
 
@@ -107,28 +113,26 @@ pub const nowav = struct {
 
         const format_type = FileType.Wave;
         _ = format_type;
+       
+       _ = try file.reader().skipBytes(4,.{}); //"fmt " tag
 
-        _ = try file.reader().skipBytes(10, .{}); //fmt id skipped
+       const fmt_block_size = try file.reader().readIntLittle(u32);
+       _ = fmt_block_size;
 
-        //    const fmt_block_size = try file.reader().readIntLittle(u32);
-        //    _ = fmt_block_size;
-
-        //  const coding_fmt = Fmt.get(try file.reader().readIntLittle(u16));
-        //  _ = coding_fmt;
-
+       const coding_fmt = Fmt.get(try file.reader().readIntLittle(u16));
+        _ = coding_fmt;
+        
         const num_channels = try file.reader().readIntLittle(u16);
-
+        
         const sample_rate = try file.reader().readIntLittle(u32);
 
-        //const data_transmission_rate = try file.reader().readIntLittle(u32);
-        //_ = data_transmission_rate;
-        _ = try file.reader().skipBytes(6, .{});
+        const data_transmission_rate = try file.reader().readIntLittle(u32);
+        _ = data_transmission_rate;
 
-        //const block_alignment = try file.reader().readIntLittle(u16);
-        //_ = block_alignment;
+        const block_alignment = try file.reader().readIntLittle(u16);
 
         const bits_per_sample = try file.reader().readIntLittle(u16);
-
+        
         //TODO extended block format if not PCM
 
         return WavFile{
@@ -139,8 +143,9 @@ pub const nowav = struct {
                     .bits_per_sample = bits_per_sample,
                     .sample_rate = sample_rate,
                     .channels = num_channels,
+                    .sample_format = SampleFormat.Int,
                 },
-                .bytes_per_sample = 2,
+                .bytes_per_sample = block_alignment / num_channels,
             },
         };
     }
@@ -283,13 +288,13 @@ const Tests = struct {
             .{nowavey.header},
         );
         defer allocator.free(wav_str);
-
         const teststr =
             \\============sine.wav==============
             \\|    file size: 88244               |
             \\|    channels: 1                 |
             \\|    sample rate: 44100          |
             \\|    bits per sample: 16         |
+            \\|    sample format: SampleFormat.Int
             \\|    bytes per sample: 2         |
             \\
         ;
@@ -314,6 +319,7 @@ const Tests = struct {
             \\|    channels: 1                 |
             \\|    sample rate: 44100          |
             \\|    bits per sample: 16         |
+            \\|    sample format: SampleFormat.Int
             \\|    bytes per sample: 2         |
             \\
         ;
@@ -337,7 +343,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
-        // try testing.expect(nowavey.header.spec_ex.spec.sample_format, SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
 
         //    let samples: Vec<i16> = wav_reader.samples()
         //       .map(|r| r.unwrap())
@@ -364,9 +370,8 @@ const Tests = struct {
             try expect(nowavey.header.spec_ex.spec.channels == 1);
             try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
             try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
+            try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
         }
-
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
 
         //            let sample = wav_reader.samples::<i16>().next().unwrap().unwrap();
         //            assert_eq!(sample, 2);
@@ -387,8 +392,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 2);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 48000);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 32);
-
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
         //let samples: Vec<i32> = wav_reader.sample()
         //    .map(|r| r.unwrap)
         //    .collect()
@@ -487,8 +491,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
-
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format  == SampleFormat.Int);
         //let samples: Vec<i16> = wav.samples()
         //                           .map(|r| r.unwrap())
         //                           .collect()
@@ -527,8 +530,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 2);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
-
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format  == SampleFormat.Int);
         //let samples: Vec<i16> = wav.samples()
         //                           .map(|r| r.unwrap())
         //                           .collect()
@@ -547,8 +549,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 8);
-
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
         //let samples: Vec<i16> = wav.samples()
         //                           .map(|r| r.unwrap())
         //                           .collect()
@@ -590,8 +591,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 192_000);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 24);
-
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format  == SampleFormat.Int);
         //let samples: Vec<i16> = wav.samples()
         //                           .map(|r| r.unwrap())
         //                           .collect()
@@ -610,8 +610,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 11025);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 8);
-
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format  == SampleFormat.Int);
         //let samples: Vec<i16> = wav.samples()
         //                           .map(|r| r.unwrap())
         //                           .collect()
@@ -631,8 +630,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 2);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 48000);
         //try expect(nowavey.header.spec_ex.spec.bits_per_sample == 24); //failed
-
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
         //let samples: Vec<i16> = wav.samples()
         //                           .map(|r| r.unwrap())
         //                           .collect()
@@ -649,8 +647,7 @@ const Tests = struct {
         defer file.close();
         const nowavey = try nowav.decode("test.wav", file);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 32);
-
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format  == SampleFormat.Int);
         //let samples: Vec<i16> = wav.samples()
         //                           .map(|r| r.unwrap())
         //                           .collect()
@@ -688,8 +685,7 @@ const Tests = struct {
             .read = true,
         });
         defer file.close();
-        const nowavey = try nowav.decode("test.wav", file);
-        _ = nowavey;
+        //_ = try nowav.decode("test.wav", file);
         //try expect(nowavey.header.spec_ex.spec.bits_per_sample == 24); //failed
 
         //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
