@@ -431,12 +431,12 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
         try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
 
-        //    let samples: Vec<i16> = wav_reader.samples()
+        const samples: Vec<i16> = nowavey.samples().ToBuf();
         //       .map(|r| r.unwrap())
         //       .collect();
 
         // The test file has been prepared with these exact four samples.
-        //  assert_eq!(&samples[..], &[2, -3, 5, -7]);
+          try expect(&samples[..], &[_]i8{2, -3, 5, -7});
     }
 
     test "read_skips_unknown_chunks" {
