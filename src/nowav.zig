@@ -57,10 +57,10 @@ const WavSpec = struct {
         _ = fmt;
         _ = options;
         _ = self;
-        try writer.print("|    channels: {d}                 |\n", .{self.channels});
-        try writer.print("|    sample rate: {d}          |\n", .{self.sample_rate});
-        try writer.print("|    bits per sample: {d}         |\n", .{self.bits_per_sample});
-        try writer.print("|    sample format: {s}\n", .{self.sample_format});
+        try writer.print("channels: {d}\n", .{self.channels});
+        try writer.print("sample rate: {d}\n", .{self.sample_rate});
+        try writer.print("bits per sample: {d}\n", .{self.bits_per_sample});
+        try writer.print("sample format: {s}\n", .{self.sample_format});
     }
 };
 
@@ -72,7 +72,7 @@ const WavSpecEx = struct {
         _ = fmt;
         _ = options;
         try writer.print("{s}", .{self.spec});
-        try writer.print("|    bytes per sample: {d}         |\n", .{self.bytes_per_sample});
+        try writer.print("bytes per sample: {d}\n", .{self.bytes_per_sample});
     }
 };
 
@@ -80,12 +80,11 @@ const WavFile = struct {
     file_name: []const u8,
     file_size: u32,
     spec_ex: WavSpecEx,
-
     pub fn format(self: WavFile, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
         try writer.print("============{s}==============\n", .{self.file_name});
-        try writer.print("|    file size: {d}               |\n", .{self.file_size});
+        try writer.print("file size: {d}\n", .{self.file_size});
         try writer.print("{s}", .{self.spec_ex});
     }
 };
@@ -95,7 +94,9 @@ const alloc = std.heap.page_allocator;
 pub const nowav = struct {
     file: fs.File = undefined,
     header: WavFile,
+
     const Self = @This();
+
     pub fn decode_header(filename: []const u8, file: fs.File) !WavFile {
         try file.seekTo(0);
 
@@ -114,32 +115,40 @@ pub const nowav = struct {
             return error.InvalidWaveFile;
         }
 
-        const format_type = FileType.Wave;
-        _ = format_type;
-
-        _ = try file.read(&buffer); //This can be fmt, data or fact
-
-        const format_len = try file.reader().readIntLittle(u32);
-
         var wavSpec: WavSpecEx = undefined;
-        if (std.mem.eql(u8, &buffer, "fmt ")) {
-            try Self.read_format_chunk(file, format_len, &wavSpec);
-        } else if (std.mem.eql(u8, &buffer, "fact")) {
-            //samples per channel
-            return error.Implement_fact_chunk;
-        } else if (std.mem.eql(u8, &buffer, "data")) {
-            return error.Implement_data_chunk;
-        } else {
-            return error.Implement_catch_all_chunk;
+        
+        while(true){
+            _ = try file.read(&buffer); //This can be fmt, data or fact
+        
+            const format_len = try file.reader().readIntLittle(u32);
+        
+            if (std.mem.eql(u8, &buffer, "fmt ")) {
+                std.debug.print("\nfmt chunk\n",.{});
+                try Self.read_format_chunk(file, format_len, &wavSpec);
+            } else if (std.mem.eql(u8, &buffer, "fact")) {
+                //samples per channel
+                std.debug.print("\nfact chunk\n",.{});
+//                wavSpec.spec.samples_per_channel = try file.reader().readIntLittle(u32);
+            } else if (std.mem.eql(u8, &buffer, "data")) {
+                std.debug.print("\ndata chunk\n",.{});
+                const subchunk2Size = try file.reader().readIntLittle(u32);
+                if((subchunk2Size % (wavSpec.spec.channels * wavSpec.bytes_per_sample)) != 0){
+                    return error.InvalidSubChunk2Size;
+                }
+                const num_samples = subchunk2Size / (wavSpec.spec.channels * wavSpec.bytes_per_sample);
+                _ = num_samples;
+                    
+                //TODO grab the data for something                
+                return WavFile{
+                    .file_name = filename,
+                    .file_size = file_size + 8,
+                    .spec_ex = wavSpec,
+                };
+            } else {
+                return error.WhyAreWeHere;
+            }    
         }
-
-        //TODO extended block format if not PCM
-
-        return WavFile{
-            .file_name = filename,
-            .file_size = file_size + 8,
-            .spec_ex = wavSpec,
-        };
+               
     }
 
     pub fn read_wave_pcm_format(len: u32, spec: *WavSpecEx) !void {
@@ -240,6 +249,7 @@ pub const nowav = struct {
         return nowav{
             .file = file,
             .header = try Self.decode_header(filename, file),
+
         };
     }
 
@@ -253,64 +263,6 @@ pub const nowav = struct {
         return wav_str;
     }
 };
-
-pub fn decode_header(filename: []const u8, file: fs.File) !WavFile {
-    try file.seekTo(0);
-
-    var buffer: [4]u8 = undefined;
-
-    _ = try file.read(&buffer);
-
-    if (!std.mem.eql(u8, &buffer, "RIFF")) {
-        return error.InvalidWaveFile;
-    }
-
-    const file_size = try file.reader().readIntLittle(u32);
-
-    _ = try file.read(&buffer);
-    if (!std.mem.eql(u8, &buffer, "WAVE")) {
-        return error.InvalidWaveFile;
-    }
-
-    const format_type = FileType.Wave;
-    _ = format_type;
-
-    _ = try file.reader().skipBytes(10, .{}); //fmt id skipped
-
-    //    const fmt_block_size = try file.reader().readIntLittle(u32);
-    //    _ = fmt_block_size;
-
-    //  const coding_fmt = Fmt.get(try file.reader().readIntLittle(u16));
-    //  _ = coding_fmt;
-
-    const num_channels = try file.reader().readIntLittle(u16);
-
-    const sample_rate = try file.reader().readIntLittle(u32);
-
-    //const data_transmission_rate = try file.reader().readIntLittle(u32);
-    //_ = data_transmission_rate;
-    _ = try file.reader().skipBytes(6, .{});
-
-    //const block_alignment = try file.reader().readIntLittle(u16);
-    //_ = block_alignment;
-
-    const bits_per_sample = try file.reader().readIntLittle(u16);
-
-    //TODO extended block format if not PCM
-
-    return WavFile{
-        .file_name = filename,
-        .file_size = file_size + 8,
-        .spec_ex = .{
-            .spec = .{
-                .bits_per_sample = bits_per_sample,
-                .sample_rate = sample_rate,
-                .channels = num_channels,
-            },
-            .bytes_per_sample = 2,
-        },
-    };
-}
 
 comptime {
     _ = Tests;
@@ -376,12 +328,12 @@ const Tests = struct {
         defer allocator.free(wav_str);
         const teststr =
             \\============sine.wav==============
-            \\|    file size: 88244               |
-            \\|    channels: 1                 |
-            \\|    sample rate: 44100          |
-            \\|    bits per sample: 16         |
-            \\|    sample format: SampleFormat.Int
-            \\|    bytes per sample: 2         |
+            \\file size: 88244
+            \\channels: 1
+            \\sample rate: 44100
+            \\bits per sample: 16
+            \\sample format: SampleFormat.Int
+            \\bytes per sample: 2
             \\
         ;
 
@@ -401,12 +353,12 @@ const Tests = struct {
 
         const teststr =
             \\============sine.wav==============
-            \\|    file size: 88244               |
-            \\|    channels: 1                 |
-            \\|    sample rate: 44100          |
-            \\|    bits per sample: 16         |
-            \\|    sample format: SampleFormat.Int
-            \\|    bytes per sample: 2         |
+            \\file size: 88244
+            \\channels: 1
+            \\sample rate: 44100
+            \\bits per sample: 16
+            \\sample format: SampleFormat.Int
+            \\bytes per sample: 2
             \\
         ;
         const str = try nowavey.printHeader();
@@ -417,26 +369,24 @@ const Tests = struct {
         test_read_pcm_wave_format();
     }
     fn test_read_pcm_wave_format() !void {
+        
         const file = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
             .read = true,
         });
         defer file.close();
-
-        //let mut wav_reader = WavReader::open("testsamples/pcmwaveformat-16bit-44100Hz-mono.wav")
-        //    .unwrap();
-
+        
         const nowavey = try nowav.decode("pcmwaveformat-16bit-44100Hz-mono.wav", file);
+
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
         try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
 
-        const samples: Vec<i16> = nowavey.samples().ToBuf();
-        //       .map(|r| r.unwrap())
-        //       .collect();
+//        var samples: [nowavey.header.spec_ex.spec.len]i8 = undefined;
+//        try nowavey.samples().ToBuf(&buf);
 
         // The test file has been prepared with these exact four samples.
-          try expect(&samples[..], &[_]i8{2, -3, 5, -7});
+//          try expect(&samples[0..], &[_]i8{2, -3, 5, -7});
     }
 
     test "read_skips_unknown_chunks" {
