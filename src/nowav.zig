@@ -43,6 +43,11 @@ const Fmt = enum {
     }
 };
 
+const DataChunk = struct {
+    len: u64 = 0,
+    remaining: u64 = 0,
+};
+
 const WavSpec = struct {
     channels: u16,
     bits_per_sample: u16,
@@ -94,7 +99,6 @@ const alloc = std.heap.page_allocator;
 pub const nowav = struct {
     file: fs.File = undefined,
     header: WavFile,
-
     const Self = @This();
 
     pub fn decode_header(filename: []const u8, file: fs.File) !WavFile {
@@ -118,43 +122,52 @@ pub const nowav = struct {
         var wavSpec: WavSpecEx = undefined;
         
         while(true){
+            
             _ = try file.read(&buffer); //This can be fmt, data or fact
         
             const format_len = try file.reader().readIntLittle(u32);
         
             if (std.mem.eql(u8, &buffer, "fmt ")) {
-                std.debug.print("\nfmt chunk\n",.{});
                 try Self.read_format_chunk(file, format_len, &wavSpec);
             } else if (std.mem.eql(u8, &buffer, "fact")) {
                 //samples per channel
-                std.debug.print("\nfact chunk\n",.{});
+                  _ = try file.reader().readIntLittle(u32);
 //                wavSpec.spec.samples_per_channel = try file.reader().readIntLittle(u32);
             } else if (std.mem.eql(u8, &buffer, "data")) {
-                std.debug.print("\ndata chunk\n",.{});
                 const subchunk2Size = try file.reader().readIntLittle(u32);
-                if((subchunk2Size % (wavSpec.spec.channels * wavSpec.bytes_per_sample)) != 0){
-                    return error.InvalidSubChunk2Size;
-                }
                 const num_samples = subchunk2Size / (wavSpec.spec.channels * wavSpec.bytes_per_sample);
                 _ = num_samples;
                     
-                //TODO grab the data for something                
-                return WavFile{
+               return WavFile{
                     .file_name = filename,
                     .file_size = file_size + 8,
                     .spec_ex = wavSpec,
                 };
             } else {
-                return error.WhyAreWeHere;
+               //Ignore bytes for the time being 
+               _ = try file.reader().skipBytes(format_len,.{});
             }    
         }
                
     }
 
-    pub fn read_wave_pcm_format(len: u32, spec: *WavSpecEx) !void {
-        _ = len;
-        _ = spec;
-        std.debug.print("\nreading pcm format\n", .{});
+    pub fn read_wave_pcm_format(file: fs.File, len: u32, spec: *WavSpecEx) !void {
+        const is_wave_format_ex = switch(len){
+            16 => false,
+            18 => true,
+            40 => true,
+            else => return error.UnknownFormat,
+        };
+        
+        if(is_wave_format_ex) {
+            const cb_size = try file.reader().readIntLittle(u16);
+            _ = cb_size;
+            _ = spec;
+        }
+        
+        if(len == 40) {
+            _ = try file.reader().skipBytes(22,.{});
+        }
     }
 
     pub fn read_wave_ieee_float(file: fs.File, len: u32, specEx: *WavSpecEx) !void {
@@ -163,7 +176,6 @@ pub const nowav = struct {
 
         if (len_ex) {
             const cb_size = try file.reader().readIntLittle(u16);
-            std.debug.print("\nieee float: cb_size {d}\n", .{cb_size});
             if (cb_size != 0) return error.UnexpectedWaveFormatExSize;
         }
 
@@ -176,7 +188,6 @@ pub const nowav = struct {
         if (len < 40) return error.Unexpected_Fmt_Size;
 
         const cb_size = try file.reader().readIntLittle(u16);
-        std.debug.print("\n{d}\n", .{cb_size});
         if (cb_size != 22) return error.UnexpectedWaveFormatExtensibleSize;
 
         const valid_bits_per_sample = try file.reader().readIntLittle(u16);
@@ -233,7 +244,7 @@ pub const nowav = struct {
         //Match format tag now and read more if needed
 
         switch (format_tag) {
-            Fmt.Pcm => try read_wave_pcm_format(len, specEx),
+            Fmt.Pcm => try read_wave_pcm_format(file,len, specEx),
             Fmt.Microsoft_Adpcm => return error.Unsupported,
             Fmt.Ieee_float => try read_wave_ieee_float(file, len, specEx),
             Fmt.A_law => return error.Unsupported,
@@ -395,8 +406,13 @@ const Tests = struct {
     fn test_read_skips_unknown_chunks() !void {
         // The test samples are the same as without the -extra suffix, but ffmpeg
         // has kindly added some useless chunks in between the fmt and data chunk.
-        const files = &[_][]const u8{ "samples/pcmwaveformat-16bit-44100Hz-mono-extra.wav", "samples/waveformatex-16bit-44100Hz-mono-extra.wav" };
+        const files = &[_][]const u8{ 
+            "samples/pcmwaveformat-16bit-44100Hz-mono-extra.wav", 
+            "samples/waveformatex-16bit-44100Hz-mono-extra.wav" 
+        };
+        
         for (files) |file| {
+            print("\n{s}\n",.{file});
             const dataFile = try fs.cwd().openFile(file, .{
                 .read = true,
             });
@@ -609,7 +625,7 @@ const Tests = struct {
         //let samples: Vec<i16> = wav.samples()
         //                           .map(|r| r.unwrap())
         //                           .collect()
-        //assert_eq!(&samples[..], &[-96, 23053,8388607,-8360672])
+       //assert_eq!(&samples[..], &[-96, 23053,8388607,-8360672])
 
     }
 
