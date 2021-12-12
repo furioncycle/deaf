@@ -100,14 +100,14 @@ pub const nowav = struct {
     file: fs.File = undefined,
     header: WavFile,
     const Self = @This();
-
-    pub fn decode_header(filename: []const u8, file: fs.File) !WavFile {
+    
+    fn decode_header(filename: []const u8, file: fs.File) !WavFile {
         try file.seekTo(0);
 
         var buffer: [4]u8 = undefined;
 
         _ = try file.read(&buffer);
-
+        
         if (!std.mem.eql(u8, &buffer, "RIFF")) {
             return error.InvalidWaveFile;
         }
@@ -144,14 +144,14 @@ pub const nowav = struct {
                     .spec_ex = wavSpec,
                 };
             } else {
-               //Ignore bytes for the time being 
+               //Ignore bytes for the time being of tags that dont matter
                _ = try file.reader().skipBytes(format_len,.{});
             }    
         }
                
     }
 
-    pub fn read_wave_pcm_format(file: fs.File, len: u32, spec: *WavSpecEx) !void {
+    fn read_wave_pcm_format(file: fs.File, len: u32, spec: *WavSpecEx) !void {
         const is_wave_format_ex = switch(len){
             16 => false,
             18 => true,
@@ -170,7 +170,7 @@ pub const nowav = struct {
         }
     }
 
-    pub fn read_wave_ieee_float(file: fs.File, len: u32, specEx: *WavSpecEx) !void {
+    fn read_wave_ieee_float(file: fs.File, len: u32, specEx: *WavSpecEx) !void {
         const len_ex = (len == 18);
         if (!len_ex and len != 16) return error.Unexpected_Fmt_Size;
 
@@ -184,7 +184,7 @@ pub const nowav = struct {
         specEx.spec.sample_format = SampleFormat.Float;
     }
 
-    pub fn read_wave_format_extensible(file: fs.File, len: u32, specEx: *WavSpecEx) !void {
+    fn read_wave_format_extensible(file: fs.File, len: u32, specEx: *WavSpecEx) !void {
         if (len < 40) return error.Unexpected_Fmt_Size;
 
         const cb_size = try file.reader().readIntLittle(u16);
@@ -209,7 +209,7 @@ pub const nowav = struct {
         }
     }
 
-    pub fn read_format_chunk(file: fs.File, len: u32, specEx: *WavSpecEx) !void {
+    fn read_format_chunk(file: fs.File, len: u32, specEx: *WavSpecEx) !void {
         if (len < 16) return error.InvalidFormatChunk;
 
         const format_tag = Fmt.get(try file.reader().readIntLittle(u16));
@@ -412,7 +412,6 @@ const Tests = struct {
         };
         
         for (files) |file| {
-            print("\n{s}\n",.{file});
             const dataFile = try fs.cwd().openFile(file, .{
                 .read = true,
             });
