@@ -84,6 +84,17 @@ const WavSpecEx = struct {
 const Samples = struct {
     len: usize,
     remaining: usize,
+    currPos: usize,
+    pub fn next(self: *@This(),file: fs.File) !self {
+        _ = self;
+        _ = file;
+    }
+    
+    pub fn collect(self: *@This(), file: fs.File) ![]i8 {
+        var buf: [self.len]i8 = undefined;       
+        try file.seekTo(self.currPos);
+        _ = buf;
+    }
 };
 
 const WavFile = struct {
@@ -152,7 +163,7 @@ pub const nowav = struct {
                     .file_name = filename,
                     .file_size = file_size + 8,
                     .spec_ex = wavSpec,
-                    .samples = .{ .len = format_len, .remaining = format_len,},
+                    .samples = .{ .len = format_len, .remaining = format_len, .currPos = try file.getPos()},
                 };
             } else {
                //Ignore bytes for the time being of tags that dont matter
