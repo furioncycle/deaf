@@ -4,4 +4,4 @@ license: MIT
 description: Digital Audio Workstation
 dev_dependencies:
 
-  - src: git https://github.com/Hejsil/zig-clap
+  - src: git https://github.com/zenith391/zgt
