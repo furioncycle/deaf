@@ -180,7 +180,7 @@ const Samples = struct {
               const val = try self.read_le_i16(file);
               try list.append(val);
            }else if(bytes == 1 and bits == 8){
-              const val = @intCast(i8,@intCast(i16,try self.read_u8(file)) - 128);
+              const val = @intCast(i8,@intCast(i16,try self.read_u8(file)) - 128); //conversion 
               try list.append(@intCast(i16,val));
            }else if(format == i32 and bytes == 3 and bits == 24){
               const val = try self.read_le_i24(file);
@@ -300,7 +300,7 @@ pub fn nowav() type {
                };
             } else {
                //Ignore bytes for the time being of tags that dont matter
-               _ = try self.file.reader().skipBytes(data_size,.{});
+               _ = try self.file.reader().skipBytes(size,.{});
             }    
         }
     }
@@ -459,6 +459,8 @@ const Tests = struct {
             "length_and_size_hints_are_incorrect",
             "read_0_valid_bits_fallback",
             "read_skips_unknown_chunks",
+            "read_as_i32_should_equal_read_as_f32",
+            "seek_is_consistant"
         };
 
         print("Running tests...\n", .{});
@@ -570,22 +572,23 @@ const Tests = struct {
             });
             defer dataFile.close();
             var nowavey = nowav().init(dataFile);
-            _ = nowavey;
-           // try nowavey.decode(file[8..]);
+            try nowavey.decode(file[8..]);
 
-          //  try expect(nowavey.header.spec_ex.spec.channels == 1);
-          //  try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
-          //  try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
-          //  try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+            try expect(nowavey.header.spec_ex.spec.channels == 1);
+            try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
+            try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
+            try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
             
+            var samples = try nowavey.samples.collect(
+                i16,
+                nowavey.file,
+                nowavey.header.spec_ex.bytes_per_sample,
+                nowavey.header.spec_ex.spec.bits_per_sample
+            );
+            defer alloc.free(samples);
+        
+            try testing.expectEqualSlices(i16, &[_]i16{2,-3,5,-7},samples); 
         }
-        
-        
-        //var samples = try nowavey.samples.collect(i16,nowavey.file,nowavey.header.spec_ex.bytes_per_sample,nowavey.header.spec_ex.spec.bits_per_sample);//;//.ToBuf(&samples);
-        //defer alloc.free(samples);
-        
-        //try testing.expectEqualSlices(i16, &[_]i16{2,-3,5,-7},samples);        //            let sample = wav_reader.samples::<i16>().next().unwrap().unwrap();
-        //            assert_eq!(sample, 2);
 
     }
 
@@ -606,11 +609,16 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 32);
         try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
         
-        //let samples: Vec<i32> = wav_reader.sample()
-        //    .map(|r| r.unwrap)
-        //    .collect()
-
-        //assert_eq!(&samples[..], &[19, -229373, 33587161, -2147483497]);
+        var samples = try nowavey.samples.collect(
+                i32,
+                nowavey.file,
+                nowavey.header.spec_ex.bytes_per_sample,
+                nowavey.header.spec_ex.spec.bits_per_sample
+        );
+        defer alloc.free(samples);
+        
+        
+        try testing.expectEqualSlices(i32, &[_]i32{19, -229373, 33587161, -2147483497},samples);         //let samples: Vec<i32> = wav_reader.sample()
     }
 
     test "length_and_size_hints_are_incorrect" {
@@ -815,7 +823,6 @@ const Tests = struct {
         defer alloc.free(samples);
         
         try testing.expectEqualSlices(i16, &[_]i16{19,-53,89,-127}, samples);
-        //assert_eq!(&samples[..], &[19, -53, 89, -127])
 
     }
 
@@ -915,12 +922,16 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
       
         
-        //const samples  = try nowavey.header.samples.collect(i32,file);
-        //defer alloc.free(samples);
+        const samples  = try nowavey.samples.collect(
+            i32,
+            nowavey.file,
+            nowavey.header.spec_ex.bytes_per_sample,
+            nowavey.header.spec_ex.spec.bits_per_sample
+        );
+        defer alloc.free(samples);
         
-        //try testing.expectEqualSlices(i32,samples, &[_]i32{-96, 23_052, 8_388_607, -8_360_672});
+        try testing.expectEqualSlices(i32,&[_]i32{-96, 23_052, 8_388_607, -8_360_672},samples);
         
-        //TODO figure out why index is over
     }
 
     test "read_wav_32bit" {
@@ -984,14 +995,22 @@ const Tests = struct {
             .read = true,
         });
         defer file.close();
-        //_ = try nowav.decode("test.wav", file);
-        //try expect(nowavey.header.spec_ex.spec.bits_per_sample == 24); //failed
 
-        //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
-        //let samples: Vec<i16> = wav.samples()
-        //                           .map(|r| r.unwrap())
-        //                           .collect()
-        //assert_eq!(&samples[..], &[0,0])
+        var nowavey = nowav().init(file);
+        try nowavey.decode("test.wav");
+        
+        try expect(nowavey.header.spec_ex.spec.bits_per_sample == 24);
+        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+      
+        const samples = try nowavey.samples.collect(
+            i32,
+            file,
+            nowavey.header.spec_ex.bytes_per_sample,
+            nowavey.header.spec_ex.spec.bits_per_sample
+        );
+        defer alloc.free(samples);
+        
+        try testing.expectEqualSlices(i32,&[_]i32{0,0},samples);        
 
     }
 
@@ -1017,7 +1036,7 @@ const Tests = struct {
         //assert_eq!(file.samples::<i8>().next().unwrap().is_err())
         //assert_eq!(file.samples::<i16>().next().unwrap().is_err())
         //assert_eq!(file.samples::<i32>().next().unwrap().is_ok())
-        //assert_eq!(file.samples::<f32>().next().unwrap().is_err())     //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);
+        //assert_eq!(file.samples::<f32>().next().unwrap().is_err())     
     }
 
     test "sample_format_mismatch_should_signal_error" {
@@ -1043,5 +1062,19 @@ const Tests = struct {
         //assert_eq!(file.samples::<i16>().next().unwrap().is_ok())
         //assert_eq!(file.samples::<i32>().next().unwrap().is_ok())
         //assert_eq!(file.samples::<f32>().next().unwrap().is_ok())     //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);                     }
+    }
+    
+    test "read_as_i32_should_equal_read_as_f32" {
+        test_read_as_i32_should_equal_read_as_f32();
+    }
+    fn test_read_as_i32_should_equal_read_as_f32() !void {
+                
+    }
+    
+    test "seek_is_consistant" {
+        test_seek_is_consistant();
+    }
+    fn test_seek_is_consistant() !void {
+        
     }
 };
