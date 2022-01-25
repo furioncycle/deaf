@@ -167,6 +167,15 @@ const Samples = struct {
            if(bytes == 4 and bits == 32){
               const val = try self.read_le_f32(file);
               try list.append(val);
+           }else if(bytes == 3 and bits == 24) {
+              const val = try self.read_le_i24(file);
+              try list.append(@intToFloat(f32,val));        
+           }else if(bytes == 2 and bits == 16){
+              const val = try self.read_le_i16(file);                
+              try list.append(@intToFloat(f32,val));
+           }else if(bytes == 1 and bits == 8){
+              const val = @intCast(i8,@intCast(i16,try self.read_u8(file))-128);
+              try list.append(@intToFloat(f32,val));
            }else if(bytes > 4){
               return error.TooWide;
            }else {
@@ -182,6 +191,9 @@ const Samples = struct {
            }else if(bytes == 1 and bits == 8){
               const val = @intCast(i8,@intCast(i16,try self.read_u8(file)) - 128); //conversion 
               try list.append(@intCast(i16,val));
+           }else if(format == i32 and bytes == 2 and bits == 16){
+              const val = @intCast(i32, try self.read_le_i16(file));
+              try list.append(val);                     
            }else if(format == i32 and bytes == 3 and bits == 24){
               const val = try self.read_le_i24(file);
               try list.append(val);
@@ -1014,6 +1026,133 @@ const Tests = struct {
 
     }
 
+    
+    
+    test "read_as_i32_should_equal_read_as_f32" {
+        test_read_as_i32_should_equal_read_as_f32();
+    }
+    fn test_read_as_i32_should_equal_read_as_f32() !void {
+        {            
+        const file_i32 = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
+            .read = true,
+        });
+        defer file_i32.close();
+
+        var no_i32 = nowav().init(file_i32);
+        try no_i32.decode("test.wav");        
+        const samples_i32 = try no_i32.samples.collect(
+            i32,
+            file_i32,
+            no_i32.header.spec_ex.bytes_per_sample,
+            no_i32.header.spec_ex.spec.bits_per_sample
+        );
+        defer alloc.free(samples_i32);
+        
+
+        const file_f32 = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
+            .read = true,
+        });
+        defer file_f32.close();
+
+        var no_f32 = nowav().init(file_f32);
+        try no_f32.decode("test.wav");        
+        const samples_f32 = try no_f32.samples.collect(
+            f32,
+            file_f32,
+            no_f32.header.spec_ex.bytes_per_sample,
+            no_f32.header.spec_ex.spec.bits_per_sample
+        );
+        defer alloc.free(samples_f32);        
+            
+        for(samples_i32)|item,idx|{
+            try testing.expectEqual(item,@floatToInt(i32,samples_f32[idx]));
+            try testing.expectEqual(@intToFloat(f32,item),samples_f32[idx]); 
+        }
+        }
+        {
+        const file_i32 = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
+            .read = true,
+        });
+        defer file_i32.close();
+
+        var no_i32 = nowav().init(file_i32);
+        try no_i32.decode("test.wav");        
+        const samples_i32 = try no_i32.samples.collect(
+            i32,
+            file_i32,
+            no_i32.header.spec_ex.bytes_per_sample,
+            no_i32.header.spec_ex.spec.bits_per_sample
+        );
+        defer alloc.free(samples_i32);
+        
+
+        const file_f32 = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
+            .read = true,
+        });
+        defer file_f32.close();
+
+        var no_f32 = nowav().init(file_f32);
+        try no_f32.decode("test.wav");        
+        const samples_f32 = try no_f32.samples.collect(
+            f32,
+            file_f32,
+            no_f32.header.spec_ex.bytes_per_sample,
+            no_f32.header.spec_ex.spec.bits_per_sample
+        );
+        defer alloc.free(samples_f32);        
+            
+        for(samples_i32)|item,idx|{
+            try testing.expectEqual(item,@floatToInt(i32,samples_f32[idx]));
+            try testing.expectEqual(@intToFloat(f32,item),samples_f32[idx]); 
+        } 
+        }
+        
+        
+{
+        const file_i32 = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
+            .read = true,
+        });
+        defer file_i32.close();
+
+        var no_i32 = nowav().init(file_i32);
+        try no_i32.decode("test.wav");        
+        const samples_i32 = try no_i32.samples.collect(
+            i32,
+            file_i32,
+            no_i32.header.spec_ex.bytes_per_sample,
+            no_i32.header.spec_ex.spec.bits_per_sample
+        );
+        defer alloc.free(samples_i32);
+        
+
+        const file_f32 = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
+            .read = true,
+        });
+        defer file_f32.close();
+
+        var no_f32 = nowav().init(file_f32);
+        try no_f32.decode("test.wav");        
+        const samples_f32 = try no_f32.samples.collect(
+            f32,
+            file_f32,
+            no_f32.header.spec_ex.bytes_per_sample,
+            no_f32.header.spec_ex.spec.bits_per_sample
+        );
+        defer alloc.free(samples_f32);        
+            
+        for(samples_i32)|item,idx|{
+            try testing.expectEqual(item,@floatToInt(i32,samples_f32[idx]));
+            try testing.expectEqual(@intToFloat(f32,item),samples_f32[idx]); 
+        } 
+        }   }    
+    test "seek_is_consistant" {
+        test_seek_is_consistant();
+    }
+    fn test_seek_is_consistant() !void {
+        
+    }
+    
+    
     test "read_should_signal_error" {
         test_read_should_signal_error();
     }
@@ -1062,19 +1201,4 @@ const Tests = struct {
         //assert_eq!(file.samples::<i16>().next().unwrap().is_ok())
         //assert_eq!(file.samples::<i32>().next().unwrap().is_ok())
         //assert_eq!(file.samples::<f32>().next().unwrap().is_ok())     //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);                     }
-    }
-    
-    test "read_as_i32_should_equal_read_as_f32" {
-        test_read_as_i32_should_equal_read_as_f32();
-    }
-    fn test_read_as_i32_should_equal_read_as_f32() !void {
-                
-    }
-    
-    test "seek_is_consistant" {
-        test_seek_is_consistant();
-    }
-    fn test_seek_is_consistant() !void {
-        
-    }
-};
+    }};
