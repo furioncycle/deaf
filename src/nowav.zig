@@ -1032,119 +1032,121 @@ const Tests = struct {
         test_read_as_i32_should_equal_read_as_f32();
     }
     fn test_read_as_i32_should_equal_read_as_f32() !void {
+        //blocked scopes so I can run the same names
         {            
-        const file_i32 = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
-            .read = true,
-        });
-        defer file_i32.close();
+            const file_i32 = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
+                .read = true,
+            });
+            defer file_i32.close();
 
-        var no_i32 = nowav().init(file_i32);
-        try no_i32.decode("test.wav");        
-        const samples_i32 = try no_i32.samples.collect(
-            i32,
-            file_i32,
-            no_i32.header.spec_ex.bytes_per_sample,
-            no_i32.header.spec_ex.spec.bits_per_sample
-        );
-        defer alloc.free(samples_i32);
-        
+            var no_i32 = nowav().init(file_i32);
+            try no_i32.decode("test.wav");        
+            const samples_i32 = try no_i32.samples.collect(
+                i32,
+                file_i32,
+                no_i32.header.spec_ex.bytes_per_sample,
+                no_i32.header.spec_ex.spec.bits_per_sample
+            );
+            defer alloc.free(samples_i32);
 
-        const file_f32 = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
-            .read = true,
-        });
-        defer file_f32.close();
+            const file_f32 = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
+                .read = true,
+            });
+            defer file_f32.close();
 
-        var no_f32 = nowav().init(file_f32);
-        try no_f32.decode("test.wav");        
-        const samples_f32 = try no_f32.samples.collect(
-            f32,
-            file_f32,
-            no_f32.header.spec_ex.bytes_per_sample,
-            no_f32.header.spec_ex.spec.bits_per_sample
-        );
-        defer alloc.free(samples_f32);        
+            var no_f32 = nowav().init(file_f32);
+            try no_f32.decode("test.wav");        
+            const samples_f32 = try no_f32.samples.collect(
+                f32,
+                file_f32,
+                no_f32.header.spec_ex.bytes_per_sample,
+                no_f32.header.spec_ex.spec.bits_per_sample
+            );
+            defer alloc.free(samples_f32);        
             
-        for(samples_i32)|item,idx|{
-            try testing.expectEqual(item,@floatToInt(i32,samples_f32[idx]));
-            try testing.expectEqual(@intToFloat(f32,item),samples_f32[idx]); 
-        }
+            for(samples_i32)|item,idx|{
+                try testing.expectEqual(item,@floatToInt(i32,samples_f32[idx]));
+                try testing.expectEqual(@intToFloat(f32,item),samples_f32[idx]); 
+            }
         }
         {
-        const file_i32 = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
-            .read = true,
-        });
-        defer file_i32.close();
+            const file_i32 = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
+                .read = true,
+            });
+            defer file_i32.close();
 
-        var no_i32 = nowav().init(file_i32);
-        try no_i32.decode("test.wav");        
-        const samples_i32 = try no_i32.samples.collect(
-            i32,
-            file_i32,
-            no_i32.header.spec_ex.bytes_per_sample,
-            no_i32.header.spec_ex.spec.bits_per_sample
-        );
-        defer alloc.free(samples_i32);
+            var no_i32 = nowav().init(file_i32);
+            try no_i32.decode("test.wav");        
+            const samples_i32 = try no_i32.samples.collect(
+                i32,
+                file_i32,
+                no_i32.header.spec_ex.bytes_per_sample,
+                no_i32.header.spec_ex.spec.bits_per_sample
+            );
+            defer alloc.free(samples_i32);
         
 
-        const file_f32 = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
-            .read = true,
-        });
-        defer file_f32.close();
+            const file_f32 = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
+                .read = true,
+            });
+            defer file_f32.close();
 
-        var no_f32 = nowav().init(file_f32);
-        try no_f32.decode("test.wav");        
-        const samples_f32 = try no_f32.samples.collect(
-            f32,
-            file_f32,
-            no_f32.header.spec_ex.bytes_per_sample,
-            no_f32.header.spec_ex.spec.bits_per_sample
-        );
-        defer alloc.free(samples_f32);        
+            var no_f32 = nowav().init(file_f32);
+            try no_f32.decode("test.wav");        
+            const samples_f32 = try no_f32.samples.collect(
+                f32,
+                file_f32,
+                no_f32.header.spec_ex.bytes_per_sample,
+                no_f32.header.spec_ex.spec.bits_per_sample
+            );
+            defer alloc.free(samples_f32);        
             
-        for(samples_i32)|item,idx|{
-            try testing.expectEqual(item,@floatToInt(i32,samples_f32[idx]));
-            try testing.expectEqual(@intToFloat(f32,item),samples_f32[idx]); 
-        } 
+            for(samples_i32)|item,idx|{
+                try testing.expectEqual(item,@floatToInt(i32,samples_f32[idx]));
+                try testing.expectEqual(@intToFloat(f32,item),samples_f32[idx]); 
+            } 
         }
         
         
-{
-        const file_i32 = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
-            .read = true,
-        });
-        defer file_i32.close();
+        {
+            const file_i32 = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
+                .read = true,
+            });
+            defer file_i32.close();
 
-        var no_i32 = nowav().init(file_i32);
-        try no_i32.decode("test.wav");        
-        const samples_i32 = try no_i32.samples.collect(
-            i32,
-            file_i32,
-            no_i32.header.spec_ex.bytes_per_sample,
-            no_i32.header.spec_ex.spec.bits_per_sample
-        );
-        defer alloc.free(samples_i32);
+            var no_i32 = nowav().init(file_i32);
+            try no_i32.decode("test.wav");        
+            const samples_i32 = try no_i32.samples.collect(
+                i32,
+                file_i32,
+                no_i32.header.spec_ex.bytes_per_sample,
+                no_i32.header.spec_ex.spec.bits_per_sample
+            );
+            defer alloc.free(samples_i32);
         
 
-        const file_f32 = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
-            .read = true,
-        });
-        defer file_f32.close();
+            const file_f32 = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
+                .read = true,
+            });
+            defer file_f32.close();
 
-        var no_f32 = nowav().init(file_f32);
-        try no_f32.decode("test.wav");        
-        const samples_f32 = try no_f32.samples.collect(
-            f32,
-            file_f32,
-            no_f32.header.spec_ex.bytes_per_sample,
-            no_f32.header.spec_ex.spec.bits_per_sample
-        );
-        defer alloc.free(samples_f32);        
+            var no_f32 = nowav().init(file_f32);
+            try no_f32.decode("test.wav");        
+            const samples_f32 = try no_f32.samples.collect(
+                f32,
+                file_f32,
+                no_f32.header.spec_ex.bytes_per_sample,
+                no_f32.header.spec_ex.spec.bits_per_sample
+            );
+            defer alloc.free(samples_f32);        
             
-        for(samples_i32)|item,idx|{
-            try testing.expectEqual(item,@floatToInt(i32,samples_f32[idx]));
-            try testing.expectEqual(@intToFloat(f32,item),samples_f32[idx]); 
-        } 
-        }   }    
+            for(samples_i32)|item,idx|{
+                try testing.expectEqual(item,@floatToInt(i32,samples_f32[idx]));
+                try testing.expectEqual(@intToFloat(f32,item),samples_f32[idx]); 
+            } 
+        }   
+    
+    }    
     test "seek_is_consistant" {
         test_seek_is_consistant();
     }
