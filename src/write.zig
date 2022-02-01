@@ -53,6 +53,28 @@ test "short_write_should_signal_error"{
 }
 fn test_short_write_should_signal_error()!void{
 
+    use SampleFormat;
+
+    let mut buffer = io::Cursor::new(Vec::new());
+
+    let write_spec = WavSpec {
+        channels: 17,
+        sample_rate: 48000,
+        bits_per_sample: 8,
+        sample_format: SampleFormat::Int,
+    };
+
+    // Deliberately write one sample less than 17 * 5.
+    let mut writer = WavWriter::new(&mut buffer, write_spec).unwrap();
+    for s in 0..17 * 5 - 1 {
+        writer.write_sample(s as i16).unwrap();
+    }
+    let error = writer.finalize().err().unwrap();
+
+    match error {
+        Error::UnfinishedSample => {}
+        _ => panic!("UnfinishedSample error should have been returned."),
+    }
 }
 
 test "wide_write_should_signal_error" {
