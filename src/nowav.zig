@@ -4,77 +4,11 @@ const testing = std.testing;
 
 const fs = std.fs;
 
+const lib = @import("lib.zig");
+
+
 const KSDATAFORMAT_SUBTYPE_PCM = [16]u8{ 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 };
 const KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = [16]u8{ 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 };
-
-const FileType = enum {
-    Wave,
-    Unknown,
-};
-
-const SampleFormat = enum {
-    Int,
-    Float,
-};
-
-const Fmt = enum {
-    Pcm,
-    Microsoft_Adpcm,
-    Ieee_float,
-    A_law,
-    Micro_law,
-    Gsm,
-    Adpcm,
-    Extended,
-    Unknown,
-
-    pub fn get(fmt: u16) Fmt {
-        return switch (fmt) {
-            1 => Fmt.Pcm,
-            2 => Fmt.Microsoft_Adpcm,
-            3 => Fmt.Ieee_float,
-            6 => Fmt.A_law,
-            7 => Fmt.Micro_law,
-            49 => Fmt.Gsm,
-            64 => Fmt.Adpcm,
-            65_534 => Fmt.Extended,
-            else => Fmt.Unknown,
-        };
-    }
-};
-
-const WavSpec = struct {
-    channels: u16,
-    bits_per_sample: u16,
-    sample_rate: u32,
-    sample_format: SampleFormat,
-    pub fn format(
-        self: WavSpec,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
-    ) !void {
-        _ = fmt;
-        _ = options;
-        _ = self;
-        try writer.print("channels: {d}\n", .{self.channels});
-        try writer.print("sample rate: {d}\n", .{self.sample_rate});
-        try writer.print("bits per sample: {d}\n", .{self.bits_per_sample});
-        try writer.print("sample format: {s}\n", .{self.sample_format});
-    }
-};
-
-const WavSpecEx = struct {
-    spec: WavSpec,
-    bytes_per_sample: u16,
-
-    pub fn format(self: WavSpecEx, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        _ = fmt;
-        _ = options;
-        try writer.print("{s}", .{self.spec});
-        try writer.print("bytes per sample: {d}\n", .{self.bytes_per_sample});
-    }
-};
 
 const Samples = struct {
     len: u64,
@@ -212,7 +146,7 @@ const Samples = struct {
 const WavFile = struct {
     file_name: []const u8,
     file_size: u32,
-    spec_ex: WavSpecEx,
+    spec_ex: lib.WavSpecEx,
     
     pub fn format(self: WavFile, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
@@ -254,7 +188,7 @@ pub fn nowav() type {
             var data_size: u64 = 0;
             var next_tag_ofs: i64 = -1;
             var data_ofs: i64 = -1;
-            var wavSpec: WavSpecEx = undefined;
+            var wavSpec: lib.WavSpecEx = undefined;
         
             _ = try self.file.read(&buffer);
         
@@ -317,7 +251,7 @@ pub fn nowav() type {
         }
     }
 
-    fn read_wave_pcm_format(self: *Self,len: u32, spec: *WavSpecEx) !void {
+    fn read_wave_pcm_format(self: *Self,len: u32, spec: *lib.WavSpecEx) !void {
         const is_wave_format_ex = switch(len){
             16 => false,
             18 => true,
@@ -336,7 +270,7 @@ pub fn nowav() type {
         }
     }
 
-    fn read_wave_ieee_float(self: *Self, len: u32, specEx: *WavSpecEx) !void {
+    fn read_wave_ieee_float(self: *Self, len: u32, specEx: *lib.WavSpecEx) !void {
         const len_ex = (len == 18);
         if (!len_ex and len != 16) return error.Unexpected_Fmt_Size;
 
@@ -347,10 +281,10 @@ pub fn nowav() type {
 
         if (specEx.spec.bits_per_sample != 32) return error.bpsNot32;
 
-        specEx.spec.sample_format = SampleFormat.Float;
+        specEx.spec.sample_format = lib.SampleFormat.Float;
     }
 
-    fn read_wave_format_extensible(self: *Self, len: u32, specEx: *WavSpecEx) !void {
+    fn read_wave_format_extensible(self: *Self, len: u32, specEx: *lib.WavSpecEx) !void {
         if (len < 40) return error.Unexpected_Fmt_Size;
 
         const cb_size = try self.file.reader().readIntLittle(u16);
@@ -363,9 +297,9 @@ pub fn nowav() type {
         _ = try self.file.read(&subformat);
 
         if (std.mem.eql(u8, &subformat, &KSDATAFORMAT_SUBTYPE_PCM)) {
-            specEx.spec.sample_format = SampleFormat.Int;
+            specEx.spec.sample_format = lib.SampleFormat.Int;
         } else if (std.mem.eql(u8, &subformat, &KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)) {
-            specEx.spec.sample_format = SampleFormat.Float;
+            specEx.spec.sample_format = lib.SampleFormat.Float;
         } else {
             return error.Unsupported;
         }
@@ -375,10 +309,10 @@ pub fn nowav() type {
         }
     }
 
-    fn read_format_chunk(self: *Self, len: u32, specEx: *WavSpecEx) !void {
+    fn read_format_chunk(self: *Self, len: u32, specEx: *lib.WavSpecEx) !void {
         if (len < 16) return error.InvalidFormatChunk;
 
-        const format_tag = Fmt.get(try self.file.reader().readIntLittle(u16));
+        const format_tag = lib.Fmt.get(try self.file.reader().readIntLittle(u16));
 
         const num_channels = try self.file.reader().readIntLittle(u16);
 
@@ -410,14 +344,14 @@ pub fn nowav() type {
         //Match format tag now and read more if needed
 
         switch (format_tag) {
-            Fmt.Pcm => try self.read_wave_pcm_format(len, specEx),
-            Fmt.Microsoft_Adpcm => return error.Unsupported,
-            Fmt.Ieee_float => try self.read_wave_ieee_float(len, specEx),
-            Fmt.A_law => return error.Unsupported,
-            Fmt.Micro_law => return error.Unsupported,
-            Fmt.Gsm => return error.Unsupported,
-            Fmt.Adpcm => return error.Unsupported,
-            Fmt.Extended => try self.read_wave_format_extensible(len, specEx),
+            lib.Fmt.Pcm => try self.read_wave_pcm_format(len, specEx),
+            lib.Fmt.Microsoft_Adpcm => return error.Unsupported,
+            lib.Fmt.Ieee_float => try self.read_wave_ieee_float(len, specEx),
+            lib.Fmt.A_law => return error.Unsupported,
+            lib.Fmt.Micro_law => return error.Unsupported,
+            lib.Fmt.Gsm => return error.Unsupported,
+            lib.Fmt.Adpcm => return error.Unsupported,
+            lib.Fmt.Extended => try self.read_wave_format_extensible(len, specEx),
             else => return error.Unsupported,
         }
     }
@@ -502,7 +436,7 @@ const Tests = struct {
             .{nowavey.header},
         );
         defer allocator.free(wav_str);
-        
+        std.debug.print("\n{s}\n",.{wav_str});
         const teststr =
             \\============sine.wav==============
             \\file size: 88244
@@ -559,7 +493,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
         
         var samples = try nowavey.samples.collect(i16,nowavey.file,nowavey.header.spec_ex.bytes_per_sample,nowavey.header.spec_ex.spec.bits_per_sample);//;//.ToBuf(&samples);
         defer alloc.free(samples);
@@ -589,7 +523,7 @@ const Tests = struct {
             try expect(nowavey.header.spec_ex.spec.channels == 1);
             try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
             try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
-            try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+            try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
             
             var samples = try nowavey.samples.collect(
                 i16,
@@ -619,7 +553,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 2);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 48000);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 32);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
         
         var samples = try nowavey.samples.collect(
                 i32,
@@ -740,7 +674,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
         
         const samples = try nowavey.samples.collect(
             i16,
@@ -768,7 +702,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 32);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Float);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Float);
         
         const samples = try nowavey.samples.collect(
             f32,
@@ -796,9 +730,9 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 2);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 16);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
                 
-        const samples = try nowavey.samples.collect(
+       const samples = try nowavey.samples.collect(
             i16,
             file,
             nowavey.header.spec_ex.bytes_per_sample,
@@ -824,7 +758,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 8);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
                 
         const samples = try nowavey.samples.collect(
             i16,
@@ -852,7 +786,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 2);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 48000);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 24);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
        
          const samples = try nowavey.samples.collect(
             i32,
@@ -880,7 +814,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 192_000);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 24);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
         const samples = try nowavey.samples.collect(
             i32,
             file,
@@ -905,7 +839,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 11025);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 8);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
         const samples  = try nowavey.samples.collect(
             i16,
             file,
@@ -931,7 +865,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 2);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 48000);
         //try expect(nowavey.header.spec_ex.spec.bits_per_sample == 24); //failed
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
       
         
         const samples  = try nowavey.samples.collect(
@@ -957,7 +891,7 @@ const Tests = struct {
         var nowavey = nowav().init(file);
         try nowavey.decode("test.wav");
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 32);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
 
         const samples =  try nowavey.samples.collect(
             i32,
@@ -984,7 +918,7 @@ const Tests = struct {
         try expect(nowavey.header.spec_ex.spec.channels == 1);
         try expect(nowavey.header.spec_ex.spec.sample_rate == 44100);
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 32);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Float);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Float);
       
         const samples = try nowavey.samples.collect(
             f32,
@@ -1012,7 +946,7 @@ const Tests = struct {
         try nowavey.decode("test.wav");
         
         try expect(nowavey.header.spec_ex.spec.bits_per_sample == 24);
-        try expect(nowavey.header.spec_ex.spec.sample_format == SampleFormat.Int);
+        try expect(nowavey.header.spec_ex.spec.sample_format == lib.SampleFormat.Int);
       
         const samples = try nowavey.samples.collect(
             i32,
@@ -1202,5 +1136,5 @@ const Tests = struct {
         //assert_eq!(file.samples::<i8>().next().unwrap().is_ok())
         //assert_eq!(file.samples::<i16>().next().unwrap().is_ok())
         //assert_eq!(file.samples::<i32>().next().unwrap().is_ok())
-        //assert_eq!(file.samples::<f32>().next().unwrap().is_ok())     //            assert_eq!(wav_reader.spec().sample_format, SampleFormat::Int);                     }
+        //assert_eq!(file.samples::<f32>().next().unwrap().is_ok())     //            assert_eq!(wav_reader.spec().sample_format, lib.SampleFormat::Int);                     }
     }};
