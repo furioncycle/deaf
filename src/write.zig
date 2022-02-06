@@ -1,6 +1,33 @@
 const std = @import("std");
 const testing = std.testing;
 
+const lib = @import("lib.zig");
+
+pub fn writer() type {
+    return struct {
+      spec_ex: lib.WavSpecEx,
+      buffer: []u8,
+
+      const Self = @This();      
+    
+      pub fn init(buffer: []u8, spec: lib.WavSpec) Self {
+            return Self{
+                .buffer = buffer,
+                .spec_ex = lib.WavSpecEx{
+                    .spec = spec,
+                    .bytes_per_sample = (spec.bits_per_sample +7)/8,
+                },                    
+            };  
+      }
+        
+      pub fn write_format(self: *Self) !void {
+            _ = self;
+      }
+
+    }; 
+
+}
+
 pub fn channel_mask(channels: u16) !u32 {
     var count: u32 = 0;
     var acc: u32 = 0;
@@ -24,7 +51,7 @@ const Tests = struct {
     fn runAll() !void {
         const tests = .{
             "verify_channel_mask",
-
+            "short_write_should_signal_error"
         };
 
         print("Running tests...\n", .{});
@@ -46,36 +73,42 @@ const Tests = struct {
         try testing.expectEqual(try channel_mask(3),7);
         try testing.expectEqual(try channel_mask(4),15);
     }
+    
+    
+    test "short_write_should_signal_error"{
+        test_short_write_should_signal_error();
+    }
+    fn test_short_write_should_signal_error()!void{
+
+        //    use SampleFormat;
+
+      //  let mut buffer = io::Cursor::new(Vec::new());
+        var buffer: []u8 = undefined;
+                
+        const write_spec = lib.WavSpec{
+            .channels= 17,
+            .sample_rate= 48000,
+            .bits_per_sample= 8,
+            .sample_format= lib.SampleFormat.Int,        
+        };
+
+        // Deliberately write one sample less than 17 * 5.
+        var w = writer().init(buffer[0..],write_spec);
+        try w.write_format();
+//    let mut writer = WavWriter::new(&mut buffer, write_spec).unwrap();
+//    for s in 0..17 * 5 - 1 {
+//        writer.write_sample(s as i16).unwrap();
+//    }
+//    let error = writer.finalize().err().unwrap();
+
+//    match error {
+//        Error::UnfinishedSample => {}
+//        _ => panic!("UnfinishedSample error should have been returned."),
+//    }
+    }
 };
 
-test "short_write_should_signal_error"{
-    test_short_write_should_signal_error();
-}
-fn test_short_write_should_signal_error()!void{
 
-    use SampleFormat;
-
-    let mut buffer = io::Cursor::new(Vec::new());
-
-    let write_spec = WavSpec {
-        channels: 17,
-        sample_rate: 48000,
-        bits_per_sample: 8,
-        sample_format: SampleFormat::Int,
-    };
-
-    // Deliberately write one sample less than 17 * 5.
-    let mut writer = WavWriter::new(&mut buffer, write_spec).unwrap();
-    for s in 0..17 * 5 - 1 {
-        writer.write_sample(s as i16).unwrap();
-    }
-    let error = writer.finalize().err().unwrap();
-
-    match error {
-        Error::UnfinishedSample => {}
-        _ => panic!("UnfinishedSample error should have been returned."),
-    }
-}
 
 test "wide_write_should_signal_error" {
     test_wide_write_should_signal_error();
