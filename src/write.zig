@@ -6,11 +6,11 @@ const lib = @import("lib.zig");
 pub fn writer() type {
     return struct {
       spec_ex: lib.WavSpecEx,
-      buffer: []u8,
+      buffer: std.ArrayListUnmanaged(u8),
 
       const Self = @This();      
     
-      pub fn init(buffer: []u8, spec: lib.WavSpec) Self {
+      pub fn init(buffer: std.ArrayListUnmanaged(u8), spec: lib.WavSpec) Self {
             return Self{
                 .buffer = buffer,
                 .spec_ex = lib.WavSpecEx{
@@ -20,8 +20,16 @@ pub fn writer() type {
             };  
       }
         
-      pub fn write_format(self: *Self) !void {
-            _ = self;
+      pub fn write_format(self: *Self, allocator: std.mem.Allocator) !void {
+        //self.buffer.append(allocator,"RIFF\0\0\0\0WAVE");
+        //write "RIFF\0\0\0\0WAVE" 
+        _ = allocator;
+        _ = self;
+            
+      }
+        
+      pub fn start_data_chunk(self: *Self) !void {
+        _ = self;
       }
 
     }; 
@@ -80,11 +88,9 @@ const Tests = struct {
     }
     fn test_short_write_should_signal_error()!void{
 
-        //    use SampleFormat;
+        var buffer= std.ArrayListUnmanaged(u8){};
+        defer buffer.deinit(allocator);        
 
-      //  let mut buffer = io::Cursor::new(Vec::new());
-        var buffer: []u8 = undefined;
-                
         const write_spec = lib.WavSpec{
             .channels= 17,
             .sample_rate= 48000,
@@ -93,8 +99,8 @@ const Tests = struct {
         };
 
         // Deliberately write one sample less than 17 * 5.
-        var w = writer().init(buffer[0..],write_spec);
-        try w.write_format();
+        var w = writer().init(buffer,write_spec);
+        try w.write_format(allocator);
 //    let mut writer = WavWriter::new(&mut buffer, write_spec).unwrap();
 //    for s in 0..17 * 5 - 1 {
 //        writer.write_sample(s as i16).unwrap();

@@ -18,11 +18,11 @@ pub fn build(b: *std.build.Builder) void {
     deps.addAllTo(exe);
     exe.install();
     
-    const debug = b.addExecutable("dbg","src/dbg.zig");
+    const debug = b.addExecutable("testable","src/testable.zig");
     debug.setBuildMode(mode);
     debug.setTarget(target);
     const debug_install = b.addInstallArtifact(debug);
-    const debug_step = b.step("debug", "Build for debug");
+    const debug_step = b.step("testable", "Build for all tests");
     debug_step.dependOn(&debug_install.step);
     
     const run_cmd = exe.run();
