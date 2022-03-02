@@ -19,13 +19,70 @@ pub fn writer() type {
                 },                    
             };  
       }
+    
+     fn write_waveformat(self: *Self) {
+         try self.buffer.append(allocator,self.spec_ex.spec.channels);
+         
+         try self.buffer.append(allocator,self.spec_ex.spec.sample_rate); 
+         
+         var bytes_per_sec = self.spec_ex.spec.sample_rate * self.spec_ex.bytes_per_sample * self.spec_ex.spec.channels;
+         try self.buffer.append(allocator,bytes_per_sec);
+         try self.buffer.append(allocator,bytes_per_sec/self.spec_ex.spec.sample_rate);
+     }
+
+     fn write_pcmwaveformat(self: *Self) !void {
+        try self.buffer.append(allocator,16); //write_le_u32
         
-      pub fn write_format(self: *Self, allocator: std.mem.Allocator) !void {
-        //self.buffer.append(allocator,"RIFF\0\0\0\0WAVE");
-        //write "RIFF\0\0\0\0WAVE" 
-        _ = allocator;
-        _ = self;
+        switch(self.spec_ex.spec.sample_format){
+            lib.SampleFormat.Int => try self.buffer.append(allocator,1), //write_le_u16
+            lib.SampleFormat.Float => if(self.spec_ex.spec.bits_per_sample == 32) try self.buffer.append(allocator,3) else error.InvalidNumberOfBitsPerSample;
+        }
             
+        try write_waveformat();
+
+        try self.buffer.append(allocator,self.spec_ex.spec.bits_per_sample);
+            
+        //Missing WAVEFORMATEX 
+      }
+    
+      
+      fn write_waveformatExtensible(self: *Self){
+           try self.buffer.append(allocator,40);     
+           try self.buffer.append(allocator,0xfffe); 
+           try self.write_waveformat();
+           try self.buffer.append(allocator, self.spec_ex.bytes_per_samples * 8);
+           try self.buffer.append(allocator, 22);
+           try self.buffer.append(allocator,self.spec_ex.spec.bits_per_sample);
+           try self.buffer.append(allocator, self.spec_ex.spec.channels);
+           
+           
+      }
+      pub fn write_format(self: *Self, allocator: std.mem.Allocator) !void {
+        const header: []const u8 = "RIFF    WAVE";
+
+        try self.buffer.appendSlice(allocator,header);            
+        
+        var fmt_kind = lib.Fmt.Pcm;
+        if (self.spec_ex.spec.channels > 2 or self.spec_ex.spec.bits_per_sample > 16){
+            fmt_kind =  lib.Fmt.Extended;
+        }
+                                
+        var supported = switch (self.spec_ex.spec.bits_per_sample) {
+            8 , 16, 24, 32 => true,
+            else => false,            
+        };
+        
+        if(!supported){
+            return error.Upsupported;
+        }
+            
+        try self.buffer.appendSlice(allocator, "fmt");
+        
+        var written = switch(fmt_kind){
+            lib.Fmt.Pcm => try self.write_pcmwaveformat();
+            else => try self.write_waveformatExtensible();
+        }
+                    
       }
         
       pub fn start_data_chunk(self: *Self) !void {
