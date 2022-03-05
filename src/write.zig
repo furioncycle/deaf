@@ -3,11 +3,13 @@ const testing = std.testing;
 
 const lib = @import("lib.zig");
 
+
+
 pub fn writer() type {
     return struct {
       spec_ex: lib.WavSpecEx,
       buffer: std.ArrayListUnmanaged(u8),
-
+      
       const Self = @This();      
     
       pub fn init(buffer: std.ArrayListUnmanaged(u8), spec: lib.WavSpec) Self {
@@ -19,44 +21,111 @@ pub fn writer() type {
                 },                    
             };  
       }
+     
+     fn write_u8(self: *Self, alloc: std.mem.Allocator,x: u8) !void {
+         var w = self.buffer.writer(alloc); 
+         try w.print("{d}", .{x});
+         //self.buffer.append(alloc,x);       
+     }
     
-     fn write_waveformat(self: *Self) {
-         try self.buffer.append(allocator,self.spec_ex.spec.channels);
+     fn write_le_i16(self: *Self, alloc: std.mem.Allocator, x: i16) !void {
+            self.write_le_u16(alloc,@bitCast(u16,x));
+     }
+        
+     fn write_le_u16(self: *Self, alloc: std.mem.Allocator, x: u16) !void {
+//            var buf: [2]u8 = undefined;
+//            buf[0] = @intCast(u8,x & 0xff);
+//            buf[1] = @intCast(u8, x >> 8);
+            var w = self.buffer.writer(alloc);
+            try w.print("{d}",.{x});
+            //try self.buffer.appendSlice(alloc,buf[0..]);
+     }
+     
+     fn write_le_i24(self: *Self, alloc: std.mem.Allocator, x: i24) !void {
+         self.write_le_u24(alloc, @bitCast(u24,x));       
+     } 
+     
+     fn write_le_u24(self: *Self, alloc: std.mem.Allocator, x: u24) !void {
+//            var buf: [3]u8 = undefined;
+//            buf[0] = @intCast(u8,x >> 00);
+//            buf[1] = @intCast(u8, (x >> 08 ) & 0xff);
+//            buf[2] = @intCast(u8, (x >> 16) & 0xff);
+//            try self.buffer.appendSlice(alloc, buf);
+            var w = self.buffer.writer(alloc);
+            try w.print("{d}", .{x});
+     }
+        
+     
+    fn write_le_i32(self: *Self, alloc: std.mem.Allocator, x: i32) !void {
+         self.write_le_u32(alloc, @bitCast(u32,x));       
+     } 
+     
+     fn write_le_u32(self: *Self, alloc: std.mem.Allocator, x: u32) !void {
+ //           var buf: [4]u8 = undefined;
+ //           buf[0] = @intCast(u8,x >> 00);
+ //           buf[1] = @intCast(u8, (x >> 08 ) & 0xff);
+ //           buf[2] = @intCast(u8, (x >> 16) & 0xff);
+ //           buf[3] = @intCast(u8, (x >> 24) & 0xff);
+ //           try self.buffer.appendSlice(alloc, buf[0..]);
+              var w = self.buffer.writer(alloc);
+              try w.print("{d}", .{x});
+    }     
+    
+    fn write_le_f32(self: *Self, alloc: std.mem.Allocator, x: f32) !void {
+        var val = @bitCast(u32, x);        
+        self.write_le_u32(alloc,val);
+    }
+        
+    fn write_waveformat(self: *Self, allocator: std.mem.Allocator) !void {
+         try self.write_le_u16(allocator,self.spec_ex.spec.channels);
          
-         try self.buffer.append(allocator,self.spec_ex.spec.sample_rate); 
+         try self.write_le_u32(allocator,self.spec_ex.spec.sample_rate);
          
          var bytes_per_sec = self.spec_ex.spec.sample_rate * self.spec_ex.bytes_per_sample * self.spec_ex.spec.channels;
-         try self.buffer.append(allocator,bytes_per_sec);
-         try self.buffer.append(allocator,bytes_per_sec/self.spec_ex.spec.sample_rate);
+         try self.write_le_u32(allocator, bytes_per_sec);
+         try self.write_le_u32(allocator, bytes_per_sec/self.spec_ex.spec.sample_rate);
      }
 
-     fn write_pcmwaveformat(self: *Self) !void {
-        try self.buffer.append(allocator,16); //write_le_u32
+     fn write_pcmwaveformat(self: *Self, allocator: std.mem.Allocator) !void {
+        try self.write_le_u32(allocator,16); //write_le_u32
         
-        switch(self.spec_ex.spec.sample_format){
-            lib.SampleFormat.Int => try self.buffer.append(allocator,1), //write_le_u16
-            lib.SampleFormat.Float => if(self.spec_ex.spec.bits_per_sample == 32) try self.buffer.append(allocator,3) else error.InvalidNumberOfBitsPerSample;
-        }
+        try switch(self.spec_ex.spec.sample_format){
+            lib.SampleFormat.Int => try self.write_le_u32(allocator,1), //write_le_u16
+            lib.SampleFormat.Float => if(self.spec_ex.spec.bits_per_sample == 32) try self.buffer.append(allocator,3) else error.InvalidNumberOfBitsPerSample,
+        };
             
-        try write_waveformat();
+        try self.write_waveformat(allocator);
 
-        try self.buffer.append(allocator,self.spec_ex.spec.bits_per_sample);
+        try self.write_le_u16(allocator,self.spec_ex.spec.bits_per_sample);
             
         //Missing WAVEFORMATEX 
+        
       }
     
       
-      fn write_waveformatExtensible(self: *Self){
-           try self.buffer.append(allocator,40);     
-           try self.buffer.append(allocator,0xfffe); 
-           try self.write_waveformat();
-           try self.buffer.append(allocator, self.spec_ex.bytes_per_samples * 8);
-           try self.buffer.append(allocator, 22);
-           try self.buffer.append(allocator,self.spec_ex.spec.bits_per_sample);
-           try self.buffer.append(allocator, self.spec_ex.spec.channels);
-           
-           
+      fn write_waveformatExtensible(self: *Self, allocator: std.mem.Allocator) !void {
+           try self.write_le_u32(allocator,40);     
+           try self.write_le_u16(allocator,0xff); 
+           try self.write_le_u16(allocator,0xfe);
+           try self.write_waveformat(allocator);
+           try self.write_le_u16(allocator, self.spec_ex.bytes_per_sample * 8);
+           try self.write_le_u32(allocator, 22);
+           try self.write_le_u16(allocator,self.spec_ex.spec.bits_per_sample);
+           try self.write_le_u32(allocator, try channel_mask(self.spec_ex.spec.channels));
+            
+           var subformat_guid: [16]u8 = undefined;
+           switch(self.spec_ex.spec.sample_format){
+                lib.SampleFormat.Int => subformat_guid = lib.KSDATAFORMAT_SUBTYPE_PCM,
+                lib.SampleFormat.Float =>  {
+                    if(self.spec_ex.spec.bits_per_sample == 32) subformat_guid = lib.KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
+                },
+            }
+            for(subformat_guid)|item|{
+                try self.buffer.append(allocator, item);
+            }
+          
       }
+
       pub fn write_format(self: *Self, allocator: std.mem.Allocator) !void {
         const header: []const u8 = "RIFF    WAVE";
 
@@ -79,9 +148,11 @@ pub fn writer() type {
         try self.buffer.appendSlice(allocator, "fmt");
         
         var written = switch(fmt_kind){
-            lib.Fmt.Pcm => try self.write_pcmwaveformat();
-            else => try self.write_waveformatExtensible();
-        }
+            lib.Fmt.Pcm => try self.write_pcmwaveformat(allocator),
+            else => try self.write_waveformatExtensible(allocator),
+        };
+            
+        _ = written;
                     
       }
         

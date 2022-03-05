@@ -7,8 +7,6 @@ const fs = std.fs;
 const lib = @import("lib.zig");
 
 
-const KSDATAFORMAT_SUBTYPE_PCM = [16]u8{ 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 };
-const KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = [16]u8{ 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 };
 
 const Samples = struct {
     len: u64,
@@ -296,9 +294,9 @@ pub fn nowav() type {
         var subformat: [16]u8 = undefined;
         _ = try self.file.read(&subformat);
 
-        if (std.mem.eql(u8, &subformat, &KSDATAFORMAT_SUBTYPE_PCM)) {
+        if (std.mem.eql(u8, &subformat, &lib.KSDATAFORMAT_SUBTYPE_PCM)) {
             specEx.spec.sample_format = lib.SampleFormat.Int;
-        } else if (std.mem.eql(u8, &subformat, &KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)) {
+        } else if (std.mem.eql(u8, &subformat, &lib.KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)) {
             specEx.spec.sample_format = lib.SampleFormat.Float;
         } else {
             return error.Unsupported;
