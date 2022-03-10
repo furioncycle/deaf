@@ -71,3 +71,14 @@ pub const WavSpecEx = struct {
         try writer.print("bytes per sample: {d}\n", .{self.bytes_per_sample});
     }
 };
+
+pub fn u8_from_signed(x: i8) u8 {
+    return @intCast(u8,@intCast(u16,x) + 128);
+}
+
+pub fn narrow_to_i8(x: i32) !i8 {
+    if (x < @intCast(i32,std.math.minInt(i8)) or x > @intCast(i32,std.math.maxInt(i8))){
+         return error.TooWide;
+    }
+    return @intCast(i8,x);
+}

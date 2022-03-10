@@ -29,7 +29,7 @@ pub fn writer() type {
      }
     
      fn write_le_i16(self: *Self, alloc: std.mem.Allocator, x: i16) !void {
-            self.write_le_u16(alloc,@bitCast(u16,x));
+        try self.write_le_u16(alloc,@bitCast(u16,x));
      }
         
      fn write_le_u16(self: *Self, alloc: std.mem.Allocator, x: u16) !void {
@@ -41,23 +41,26 @@ pub fn writer() type {
             //try self.buffer.appendSlice(alloc,buf[0..]);
      }
      
-     fn write_le_i24(self: *Self, alloc: std.mem.Allocator, x: i24) !void {
-         self.write_le_u24(alloc, @bitCast(u24,x));       
+     fn write_le_i24(self: *Self, alloc: std.mem.Allocator, x: i32) !void {
+         try self.write_le_u24(alloc, @bitCast(u32,x));       
      } 
      
-     fn write_le_u24(self: *Self, alloc: std.mem.Allocator, x: u24) !void {
+     fn write_le_i24_4(self: *Self, alloc: std.mem.Allocator, x: i32) !void {
+         try self.write_le_u32(alloc, @bitCast(u32,x) & 0x00_ff_ff_ff);       
+     }     
+     fn write_le_u24(self: *Self, alloc: std.mem.Allocator, x: u32) !void {
 //            var buf: [3]u8 = undefined;
 //            buf[0] = @intCast(u8,x >> 00);
 //            buf[1] = @intCast(u8, (x >> 08 ) & 0xff);
 //            buf[2] = @intCast(u8, (x >> 16) & 0xff);
 //            try self.buffer.appendSlice(alloc, buf);
             var w = self.buffer.writer(alloc);
-            try w.print("{d}", .{x});
+            try w.print("{d}", .{@intCast(u24,x)});
      }
         
      
     fn write_le_i32(self: *Self, alloc: std.mem.Allocator, x: i32) !void {
-         self.write_le_u32(alloc, @bitCast(u32,x));       
+         try self.write_le_u32(alloc, @bitCast(u32,x));       
      } 
      
      fn write_le_u32(self: *Self, alloc: std.mem.Allocator, x: u32) !void {
@@ -73,7 +76,7 @@ pub fn writer() type {
     
     fn write_le_f32(self: *Self, alloc: std.mem.Allocator, x: f32) !void {
         var val = @bitCast(u32, x);        
-        self.write_le_u32(alloc,val);
+        try self.write_le_u32(alloc,val);
     }
         
     fn write_waveformat(self: *Self, allocator: std.mem.Allocator) !void {
@@ -147,17 +150,59 @@ pub fn writer() type {
             
         try self.buffer.appendSlice(allocator, "fmt");
         
-        var written = switch(fmt_kind){
+        switch(fmt_kind){
             lib.Fmt.Pcm => try self.write_pcmwaveformat(allocator),
             else => try self.write_waveformatExtensible(allocator),
-        };
+        }
             
-        _ = written;
-                    
+        //Need position of current buffer? 
+                                
       }
         
-      pub fn start_data_chunk(self: *Self) !void {
-        _ = self;
+      pub fn start_data_chunk(self: *Self, alloc: std.mem.Allocator) !void {
+        try self.buffer.appendSlice(alloc,"data");
+        try self.write_le_u32(0);
+        //state ?
+      }
+      
+      pub fn flush(self: *Self,alloc: std.mem.Allocator) !void {
+          try self.update_headers(alloc);
+          try self.buffer.writer(alloc).flush();
+      }  
+
+      pub fn finalize(self: *Self,alloc: std.mem.Allocator) !void {
+            self.flush(alloc);
+      }
+
+      fn write_padded(self: *Self, alloc: std.mem.Allocator, sample: anytype, bits: u16, bytes: u16) !void {
+            _ = self;
+            if (bits == 8 and bytes == 1) { 
+                try self.write_u8(
+                    alloc,
+                    lib.u8_from_signed( 
+                        try lib.narrow_to_i8(@intCast(i32,sample))
+                    )
+                );
+            }else if(bits == 16 and bytes == 2) {
+                try self.write_le_i16(alloc,@intCast(i16,sample));           
+            }else if(bits == 24 and bytes == 3) {
+                try self.write_le_i24(alloc,@intCast(i32,sample));
+            }else if(bits == 24 and bytes == 4){
+                try self.write_le_i24_4(alloc,@intCast(i32,sample));
+            }else if(bits == 32 and bytes == 4){
+                try self.write_le_i32(alloc,@intCast(i32,sample));
+            }
+      }        
+      pub fn write_samples(self: *Self, alloc: std.mem.Allocator, sample: anytype) !void {
+            //get spec_ex 
+            try self.write_padded(
+                alloc,
+                sample,
+                self.spec_ex.spec.bits_per_sample,
+                self.spec_ex.bytes_per_sample
+            );
+            //written = bytes_per_sample 
+            //data state???
       }
 
     }; 
@@ -229,6 +274,15 @@ const Tests = struct {
         // Deliberately write one sample less than 17 * 5.
         var w = writer().init(buffer,write_spec);
         try w.write_format(allocator);
+
+        {
+            var i: usize = 0;
+            while(i < (17 * 5 - 1)): (i += 1){
+                try w.write_samples(allocator,@intCast(u16,i));           
+            }
+        }        
+        
+       // w.finalize();
 //    let mut writer = WavWriter::new(&mut buffer, write_spec).unwrap();
 //    for s in 0..17 * 5 - 1 {
 //        writer.write_sample(s as i16).unwrap();
