@@ -164,14 +164,30 @@ pub fn writer() type {
         try self.write_le_u32(0);
         //state ?
       }
-      
+        
+      fn update_data_chunk_header(self: *Self, alloc: std.mem.Allocator) !void {
+          //has to be in data section
+          //also has a known format 
+          _ = alloc;          
+          if(self.buffer.items.len / self.spec_ex.bytes_per_sample % self.spec_ex.spec.channels != 0){
+             return error.UnfinishedSample;       
+          }      
+      }
+      fn update_headers(self: *Self, alloc: std.mem.Allocator) !void {
+         try self.update_data_chunk_header(alloc);
+         //try self.update_riff_header(alloc);
+          //scan to the area for length
+          //add the length in 
+          //scan back      
+      }
+
       pub fn flush(self: *Self,alloc: std.mem.Allocator) !void {
           try self.update_headers(alloc);
-          try self.buffer.writer(alloc).flush();
       }  
 
       pub fn finalize(self: *Self,alloc: std.mem.Allocator) !void {
-            self.flush(alloc);
+
+            try self.flush(alloc);
       }
 
       fn write_padded(self: *Self, alloc: std.mem.Allocator, sample: anytype, bits: u16, bytes: u16) !void {
@@ -282,7 +298,7 @@ const Tests = struct {
             }
         }        
         
-       // w.finalize();
+        try testing.expectError(error.UnfinishedSample,w.finalize(allocator));
 //    let mut writer = WavWriter::new(&mut buffer, write_spec).unwrap();
 //    for s in 0..17 * 5 - 1 {
 //        writer.write_sample(s as i16).unwrap();
