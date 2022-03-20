@@ -82,3 +82,17 @@ pub fn narrow_to_i8(x: i32) !i8 {
     }
     return @intCast(i8,x);
 }
+
+pub fn narrow_to_i16(x: i32) !i16 {
+    if( x < @intCast(i32, std.math.minInt(i16)) or x > @intCast(i32, std.math.maxInt(i16))){
+            return error.TooWide;
+    }
+    return @truncate(i16,x);
+}
+
+pub fn narrow_to_i24(x: i32) !i32 {
+    if(x < @intCast(i32, std.math.minInt(i24)) or x > @intCast(i32, std.math.maxInt(i24))){
+        return error.TooWide;        
+    }
+    return x;
+}

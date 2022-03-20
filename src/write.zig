@@ -5,6 +5,7 @@ const lib = @import("lib.zig");
 const sample = @import("sample.zig");
 
 
+
 pub fn writer() type {
     return struct {
       spec_ex: lib.WavSpecEx,
@@ -326,7 +327,7 @@ const Tests = struct {
             try w.write_format(allocator);                
             try w.write_samples(i16,allocator,32767);         
             try w.write_samples(i32,allocator,32767);     
-//            try testing.expectError(error.TooWide,w.write_samples(i32,allocator,32768));
+            try testing.expectError(error.TooWide,w.write_samples(i32,allocator,32768));
         }
     
     
@@ -340,8 +341,8 @@ const Tests = struct {
 
             var w = writer().init(buffer,spec24);                
             try w.write_format(allocator);                
-//            try w.write_samples(allocator,@intCast(i32,8_388_607));     
-//            try testing.expectError(error.TooWide,w.write_samples(allocator,@intCast(i32,8_388_608)));     
+            try w.write_samples(i32,allocator,8_388_607);     
+            try testing.expectError(error.TooWide,w.write_samples(i32, allocator,8_388_608));     
         }
     }
 };

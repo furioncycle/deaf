@@ -7,17 +7,23 @@ pub fn write_padded(comptime T: type, w: *writer.writer(), alloc: std.mem.Alloca
      try w.write_u8(
           alloc,
           lib.u8_from_signed( 
-          try lib.narrow_to_i8(@intCast(i32,sample))
-          )
-        );
+          try lib.narrow_to_i8(@intCast(i32,sample))));
   }else if(bits == 16 and bytes == 2) {
-     try w.write_le_i16(alloc,@intCast(i16,sample));           
+     try w.write_le_i16(
+          alloc,
+          try lib.narrow_to_i16(@intCast(i32,sample)));           
   }else if(bits == 24 and bytes == 3) {
-     try w.write_le_i24(alloc,@intCast(i32,sample));
+     try w.write_le_i24(
+        alloc,
+        try lib.narrow_to_i24(@intCast(i32,sample)));
    }else if(bits == 24 and bytes == 4){
-     try w.write_le_i24_4(alloc,@intCast(i32,sample));
+     try w.write_le_i24_4(
+        alloc,
+        try lib.narrow_to_i24(@intCast(i32,sample)));
    }else if(bits == 32 and bytes == 4){
-     try w.write_le_i32(alloc,@intCast(i32,sample));
+     try w.write_le_i32(
+        alloc,
+        @intCast(i32,sample));
    }   
 }
 
