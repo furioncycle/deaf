@@ -18,7 +18,7 @@ pub fn writer() type {
                 .buffer = buffer,
                 .spec_ex = lib.WavSpecEx{
                     .spec = spec,
-                    .bytes_per_sample = (spec.bits_per_sample +7)/8,
+                    .bytes_per_sample = (spec.bits_per_sample + 7 ) / 8,
                 },                    
             };  
       }
