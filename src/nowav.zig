@@ -488,7 +488,7 @@ const Tests = struct {
     }
     fn test_read_header_file() !void {
         const file = try fs.cwd().openFile("samples/sine.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
 
@@ -522,7 +522,7 @@ const Tests = struct {
     }
     fn test_decode_struct() !void {
         const file = try fs.cwd().openFile("samples/sine.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
 
@@ -549,7 +549,7 @@ const Tests = struct {
     fn test_read_pcm_wave_format() !void {
         
         const file = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         
@@ -580,7 +580,7 @@ const Tests = struct {
         
         for (files) |file| {
             const dataFile = try fs.cwd().openFile(file, .{
-                .read = true,
+                .mode=.read_only,
             });
             defer dataFile.close();
             var nowavey = nowav().init(dataFile);
@@ -609,7 +609,7 @@ const Tests = struct {
     }
     fn test_read_0_valid_bits_fallback() !void {
         const dataFile = try fs.cwd().openFile("samples/nonstandard-02.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer dataFile.close();
 
@@ -638,7 +638,7 @@ const Tests = struct {
     }
     fn test_length_and_size_hints_are_incorrect() !void {
         const file = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
 
@@ -670,7 +670,7 @@ const Tests = struct {
 
         for (files) |file| {
             const d = try fs.cwd().openFile(file, .{
-                .read = true,
+                .mode=.read_only,
             });
             defer d.close();
             _ = d;
@@ -690,12 +690,12 @@ const Tests = struct {
     }
     fn test_Samples_eq_Samples() !void {
         const val = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer val.close();
 
         const ref = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer ref.close();
         
@@ -730,7 +730,7 @@ const Tests = struct {
     }
     fn test_read_wave_format_ex_pcm() !void {
         const file = try fs.cwd().openFile("samples/waveformatex-16bit-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
 
@@ -758,7 +758,7 @@ const Tests = struct {
     }
     fn test_read_wave_format_ex_ieee_float() !void {
         const file = try fs.cwd().openFile("samples/waveformatex-ieeefloat-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         
@@ -786,7 +786,7 @@ const Tests = struct {
     }
     fn test_read_wave_stereo() !void {
         const file = try fs.cwd().openFile("samples/waveformatex-16bit-44100Hz-stereo.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         
@@ -814,7 +814,7 @@ const Tests = struct {
     }
     fn test_read_pcm_wave_format_8bit() !void {
         const file = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         
@@ -843,7 +843,7 @@ const Tests = struct {
     }
     fn test_read_pcm_wave_format_24bit_4byte() !void {
         const file = try fs.cwd().openFile("samples/pcmwaveformat-24bit-4byte-48kHz-stereo.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
 
@@ -872,7 +872,7 @@ const Tests = struct {
     }
     fn test_read_waveformatex_pcm_24bit() !void {
         const file = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         var nowavey = nowav().init(file);
@@ -897,7 +897,7 @@ const Tests = struct {
     }
     fn test_read_waveformatex_8bit() !void {
         const file = try fs.cwd().openFile("samples/waveformatex-8bit-11025Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         var nowavey = nowav().init(file);
@@ -923,7 +923,7 @@ const Tests = struct {
     }
     fn test_read_waveformat_extensible_pcm_24bit_4byte() !void {
         const file = try fs.cwd().openFile("samples/waveformatextensible-24bit-4byte-48kHz-stereo.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         var nowavey = nowav().init(file);
@@ -951,7 +951,7 @@ const Tests = struct {
     }
     fn test_read_wav_32bit() !void {
         const file = try fs.cwd().openFile("samples/waveformatextensible-32bit-48kHz-stereo.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         var nowavey = nowav().init(file);
@@ -976,7 +976,7 @@ const Tests = struct {
     }
     fn test_read_waveformat_extensible_ieee_float() !void {
         const file = try fs.cwd().openFile("samples/waveformatextensible-ieeefloat-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         var nowavey = nowav().init(file);
@@ -1004,7 +1004,7 @@ const Tests = struct {
     }
     fn test_read_nonstandard_01() !void {
         const file = try fs.cwd().openFile("samples/nonstandard-01.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
 
@@ -1035,7 +1035,7 @@ const Tests = struct {
         //blocked scopes so I can run the same names
         {            
             const file_i32 = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
-                .read = true,
+                .mode=.read_only,
             });
             defer file_i32.close();
 
@@ -1050,7 +1050,7 @@ const Tests = struct {
             defer alloc.free(samples_i32);
 
             const file_f32 = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
-                .read = true,
+                .mode=.read_only,
             });
             defer file_f32.close();
 
@@ -1071,7 +1071,7 @@ const Tests = struct {
         }
         {
             const file_i32 = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
-                .read = true,
+                .mode=.read_only,
             });
             defer file_i32.close();
 
@@ -1087,7 +1087,7 @@ const Tests = struct {
         
 
             const file_f32 = try fs.cwd().openFile("samples/pcmwaveformat-16bit-44100Hz-mono.wav", .{
-                .read = true,
+                .mode=.read_only,
             });
             defer file_f32.close();
 
@@ -1110,7 +1110,7 @@ const Tests = struct {
         
         {
             const file_i32 = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
-                .read = true,
+                .mode=.read_only,
             });
             defer file_i32.close();
 
@@ -1126,7 +1126,7 @@ const Tests = struct {
         
 
             const file_f32 = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
-                .read = true,
+                .mode=.read_only,
             });
             defer file_f32.close();
 
@@ -1160,7 +1160,7 @@ const Tests = struct {
     }
     fn test_read_should_signal_error() !void {
         const file = try fs.cwd().openFile("samples/waveformatextensible-24bit-192kHz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         _ = file;
@@ -1170,7 +1170,7 @@ const Tests = struct {
         //assert_eq!(file.samples::<f32>().next().unwrap().is_ok())
 
         const file2 = try fs.cwd().openFile("samples/waveformatextensible-32bit-48kHz-stereo.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file2.close();
         _ = file2;
@@ -1185,7 +1185,7 @@ const Tests = struct {
     }
     fn test_sample_format_mismatch_should_signal_error() !void {
         const file = try fs.cwd().openFile("samples/waveformatex-ieeefloat-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file.close();
         _ = file;
@@ -1195,7 +1195,7 @@ const Tests = struct {
         //assert_eq!(file.samples::<f32>().next().unwrap().is_ok())
 
         const file2 = try fs.cwd().openFile("samples/pcmwaveformat-8bit-44100Hz-mono.wav", .{
-            .read = true,
+            .mode=.read_only,
         });
         defer file2.close();
         _ = file2;
